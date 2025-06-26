@@ -109,6 +109,7 @@ const createExtensions = (
               alt: image.name,
               title: image.name,
               fileName: image.name,
+              style: 'max-width: 100%; height: auto;',
             },
           };
         }),
@@ -165,7 +166,10 @@ const createExtensions = (
         }
         editor.commands.insertContentAt(pos, {
           type: "image",
-          attrs,
+          attrs: {
+            ...attrs,
+            style: 'max-width: 100%; height: auto;',
+          },
         });
       });
     },
@@ -178,7 +182,10 @@ const createExtensions = (
         }
         editor.commands.insertContent({
           type: "image",
-          attrs,
+          attrs:{
+            src:srcUrl,
+            style: 'max-width: 20px; height: auto;'
+          }
         });
       });
     },

@@ -75,7 +75,7 @@ export const DescriptionEditor = ({
       <Toolbar editor={editor} />
       <EditorContent
         editor={editor}
-        className={cn("minimal-tiptap-editor", editorContentClassName)}
+        className={cn("minimal-tiptap-editor", "prose max-w-none h-[300px] overflow-y-auto p-4", editorContentClassName)}
       />
       <LinkBubbleMenu editor={editor} />
     </MeasuredContainer>

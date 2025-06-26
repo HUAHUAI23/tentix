@@ -352,3 +352,28 @@ export const Image = TiptapImage.extend<CustomImageOptions>({
     });
   },
 });
+
+// 简单图片压缩，限制最大宽度为 maxWidth
+export async function compressImage(file: File, maxWidth = 600): Promise<File> {
+  return new Promise((resolve) => {
+    const img = new window.Image();
+    const url = URL.createObjectURL(file);
+    img.onload = () => {
+      const scale = Math.min(1, maxWidth / img.width);
+      const canvas = document.createElement('canvas');
+      canvas.width = img.width * scale;
+      canvas.height = img.height * scale;
+      const ctx = canvas.getContext('2d')!;
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+      canvas.toBlob((blob) => {
+        if (blob) {
+          resolve(new File([blob], file.name, { type: file.type }));
+        } else {
+          resolve(file);
+        }
+      }, file.type);
+      URL.revokeObjectURL(url);
+    };
+    img.src = url;
+  });
+}

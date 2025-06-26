@@ -21,7 +21,7 @@ export const i18next = i18nBase.use(initReactI18next).init({
         docs_management: "docs management",
 
         area: "area",
-        title: "title",
+        title: "Title",
         category: "category",
         priority: "priority",
         status: "status",
@@ -82,7 +82,7 @@ export const i18next = i18nBase.use(initReactI18next).init({
 
         community: "Forum",
 
-        tkt: "ticket",
+        tkt: "Ticket",
         tkt_list: "Tickets",
         tkt_system: "$t(tkt_other) system",
         tkt_create: "create $t(tkt_one)",
@@ -157,8 +157,8 @@ export const i18next = i18nBase.use(initReactI18next).init({
         create_new_ticket: "Create new ticket",
         select: "Select",
         details: "Details",
-        plz_pvd_info: "Provide information about your issue or request",
-        title_ph: "Briefly describe your issue or request",
+        plz_pvd_info: "Please provide details about the issue you’re experiencing or your specific request so we can assist you quickly and effectively.",
+        title_ph: "Briefly describe the issue.",
 
         module: "Module",
 
@@ -181,8 +181,8 @@ export const i18next = i18nBase.use(initReactI18next).init({
 
         occurrence_time_ph: "Select date and time of occurrence",
         type: "type",
-        desc: "description",
-        desc_ph: "Enter description here... Images can be dragged or pasted",
+        desc: "Description",
+        desc_ph: "Describe the issue in detail, including steps to reproduce, expected and actual results. Drag & drop or paste screenshots/images here.",
 
         plz_fill_all_fields: "Please fill in all required fields",
         missing_fields: "Missing required fields: {{fields}}",
