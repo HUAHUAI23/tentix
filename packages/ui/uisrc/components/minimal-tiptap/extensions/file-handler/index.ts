@@ -5,6 +5,7 @@ import {
   type FileError,
   type FileValidationOptions,
 } from "../../utils.ts";
+import { compressImage } from "../image/image.ts";
 
 type FileHandlePluginOptions = {
   key?: PluginKey;

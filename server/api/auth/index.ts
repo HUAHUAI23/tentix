@@ -1,6 +1,6 @@
 import { areaEnumArray } from "@/utils/const.ts";
 import { aesEncryptToString } from "@/utils/crypto";
-import { connectDB } from "@/utils/index.ts";
+import { connectDB, logError, SealosJWT } from "@/utils/index.ts";
 import * as schema from "@db/schema.ts";
 import { eq } from "drizzle-orm";
 import { Context } from "hono";
@@ -10,6 +10,7 @@ import { getConnInfo } from "hono/bun";
 import { HTTPException } from "hono/http-exception";
 import { z } from "zod";
 import { factory, MyEnv } from "../middleware";
+import { isJWTExpired, parseSealosJWT } from "@/utils/jwt";
 
 interface Data {
   info: {
@@ -35,12 +36,18 @@ interface AuthResponse {
   data: Data;
 }
 
-
-export async function signBearerToken(c: Context<MyEnv>, id: number, role: string) {
+export async function signBearerToken(
+  c: Context<MyEnv>,
+  id: number,
+  role: string,
+) {
   const cryptoKey = c.get("cryptoKey")();
   const now = new Date();
-  const expireTime = Math.floor(now.getTime()/1000) + 60 * 60 * 24 * 30;
-  const ciphertext = await aesEncryptToString(`${id}##${role}##${expireTime}`, cryptoKey);
+  const expireTime = Math.floor(now.getTime() / 1000) + 60 * 60 * 24 * 30;
+  const ciphertext = await aesEncryptToString(
+    `${id}##${role}##${expireTime}`,
+    cryptoKey,
+  );
   const token = `${ciphertext.ciphertext}+Tx*${ciphertext.iv}`;
   const connInfo = getConnInfo(c);
   const ip = connInfo.remote.address ?? "unknown";
@@ -50,7 +57,7 @@ export async function signBearerToken(c: Context<MyEnv>, id: number, role: strin
     loginTime: now.toUTCString(),
     userAgent: String(c.req.header("User-Agent")),
     ip,
-    token
+    token,
   });
   return {
     token,
@@ -58,7 +65,7 @@ export async function signBearerToken(c: Context<MyEnv>, id: number, role: strin
   };
 }
 
-const authRouter = factory.createApp().get(
+const authRouter = factory.createApp().post(
   "/login",
   describeRoute({
     description: "Login",
@@ -83,61 +90,62 @@ const authRouter = factory.createApp().get(
     },
   }),
   zValidator(
-    "query",
+    "json",
     z.object({
       token: z.string(),
       area: z.enum(areaEnumArray),
+      userInfo: z.object({
+        id: z.string(),
+        name: z.string(),
+        avatar: z.string(),
+        k8sUsername: z.string(),
+        nsid: z.string(),
+      }),
     }),
   ),
   async (c) => {
     const db = connectDB();
-    const query = c.req.valid("query");
+    const payload = c.req.valid("json");
 
+    const { token, userInfo: userInfoPayload } = payload;
 
-    const authRes = await fetch(
-      `https://${query.area}.sealos.run/api/auth/info`,
-      {
-        method: "POST",
-        headers: {
-          Authorization: `${query.token}`,
-        },
-      },
-    );
-    const authResJson: AuthResponse = await authRes.json();
-    if (!authRes.ok && authResJson.data !== null) {
+    if (isJWTExpired(token)) {
       throw new HTTPException(401, {
         message: "Unauthorized",
-        cause: authResJson.message,
+        cause: "Token expired",
       });
     }
-    const info = authResJson.data.info;
-    // const baseUrl = new URL(c.req.url).origin;
+
+    let sealosJwtPayload: SealosJWT;
+    try {
+      sealosJwtPayload = parseSealosJWT(token);
+    } catch (error) {
+      logError("Error parsing sealos JWT:", error);
+      throw new HTTPException(401, {
+        message: "Unauthorized",
+        cause: "Token invalid",
+      });
+    }
 
     const userInfo = await (async () => {
       const user = await db.query.users.findFirst({
-        where: eq(schema.users.uid, info.uid),
+        where: eq(schema.users.uid, sealosJwtPayload.userUid),
       });
       if (user === undefined) {
         const [newUser] = await db
           .insert(schema.users)
           .values({
-            uid: info.uid,
-            name: info.name,
-            nickname: info.nickname,
-            realName: info?.realName ?? "",
-            identity: info.id,
-            avatar: info.avatarUri,
-            registerTime: info.createdAt,
+            uid: sealosJwtPayload.userUid,
+            name: userInfoPayload.name,
+            nickname: "",
+            realName: "",
+            identity: userInfoPayload.id,
+            avatar: userInfoPayload.avatar,
+            registerTime: new Date().toISOString(),
             level: 1,
             role: "customer",
-            email:
-              info.oauthProvider.find(
-                (provider) => provider.providerType === "EMAIL",
-              )?.providerId || "",
-            phoneNum:
-              info.oauthProvider.find(
-                (provider) => provider.providerType === "PHONE",
-              )?.providerId || "",
+            email: "",
+            phoneNum: "",
           })
           .returning();
 
@@ -153,7 +161,7 @@ const authRouter = factory.createApp().get(
 
     return c.json({
       id: userInfo.id,
-      uid: info.uid,
+      uid: userInfo.uid,
       role: userInfo.role,
       ...tokenInfo,
     });
