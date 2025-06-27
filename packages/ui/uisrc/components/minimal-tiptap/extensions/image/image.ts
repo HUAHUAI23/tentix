@@ -21,6 +21,12 @@ interface ImageActionProps extends DownloadImageCommandProps {
   action: ImageAction;
 }
 
+interface CompressedImage {
+  file: File;
+  width: number;
+  height: number;
+}
+
 export type UploadReturnType =
   | string
   | {
@@ -354,26 +360,70 @@ export const Image = TiptapImage.extend<CustomImageOptions>({
 });
 
 // 简单图片压缩，限制最大宽度为 maxWidth
-export async function compressImage(file: File, maxWidth = 600): Promise<File> {
+// export async function compressImage(file: File, maxWidth = 100): Promise<File> {
+//   return new Promise((resolve) => {
+//     const img = new window.Image();
+//     const url = URL.createObjectURL(file);
+//     img.onload = () => {
+//       const scale = Math.min(1, maxWidth / img.width);
+//       const canvas = document.createElement('canvas');
+//       canvas.width = img.width * scale;
+//       canvas.height = img.height * scale;
+//       const ctx = canvas.getContext('2d')!;
+//       ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+//       canvas.toBlob((blob) => {
+//         if (blob) {
+//           resolve(new File([blob], file.name, { type: file.type }));
+//         } else {
+//           resolve(file);
+//         }
+//       }, file.type);
+//       URL.revokeObjectURL(url);
+//     };
+//     img.src = url;
+//   });
+// }
+export async function compressImage(
+  file: File,
+  maxSize: number
+): Promise<CompressedImage> {
   return new Promise((resolve) => {
     const img = new window.Image();
     const url = URL.createObjectURL(file);
+
     img.onload = () => {
-      const scale = Math.min(1, maxWidth / img.width);
-      const canvas = document.createElement('canvas');
-      canvas.width = img.width * scale;
-      canvas.height = img.height * scale;
-      const ctx = canvas.getContext('2d')!;
-      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-      canvas.toBlob((blob) => {
-        if (blob) {
-          resolve(new File([blob], file.name, { type: file.type }));
-        } else {
-          resolve(file);
-        }
-      }, file.type);
-      URL.revokeObjectURL(url);
+      const { width: origW, height: origH } = img;
+      const maxEdge = Math.max(origW, origH);
+      const scale = Math.min(1, maxSize / maxEdge);
+
+      const newW = Math.round(origW * scale);
+      const newH = Math.round(origH * scale);
+
+      const canvas = document.createElement("canvas");
+      canvas.width = newW;
+      canvas.height = newH;
+      const ctx = canvas.getContext("2d")!;
+      ctx.drawImage(img, 0, 0, newW, newH);
+
+      canvas.toBlob(
+        (blob) => {
+          URL.revokeObjectURL(url);
+          if (blob) {
+            const newFile = new File([blob], file.name, { type: file.type });
+            resolve({ file: newFile, width: newW, height: newH });
+          } else {
+            resolve({ file, width: origW, height: origH });
+          }
+        },
+        file.type,
+      );
     };
+
+    img.onerror = () => {
+      URL.revokeObjectURL(url);
+      resolve({ file, width: img.width, height: img.height });
+    };
+
     img.src = url;
   });
 }

@@ -20,6 +20,7 @@ import { cn } from "uisrc/lib/utils.ts";
 import {  getOutput, randomId } from "../utils.ts";
 import { useThrottle } from "../hooks/use-throttle.ts";
 import { useToast } from "uisrc/hooks/use-toast.ts";
+import { compressImage } from "../extensions/index.ts";
 
 // FIXME: This is a temporary solution until we have a proper upload service
 const uploadFile = async (file: File) => {
@@ -91,8 +92,9 @@ const createExtensions = (
     maxFileSize: 5 * 1024 * 1024,
     allowBase64: false,
     async uploadFn(file) {
-      const srcUrl = await uploadFile(file);
-      return { id: randomId(), src: srcUrl };
+      const { file: compressedImage, width, height } = await compressImage(file, 100);
+      const srcUrl = await uploadFile(compressedImage);
+      return { id: randomId(), src: srcUrl, width, height };
     },
     onToggle(editor, files, pos) {
       console.log("Inserting content", { files, pos });
@@ -109,7 +111,6 @@ const createExtensions = (
               alt: image.name,
               title: image.name,
               fileName: image.name,
-              style: 'max-width: 100%; height: auto;',
             },
           };
         }),
@@ -166,10 +167,7 @@ const createExtensions = (
         }
         editor.commands.insertContentAt(pos, {
           type: "image",
-          attrs: {
-            ...attrs,
-            style: 'max-width: 100%; height: auto;',
-          },
+          attrs,
         });
       });
     },
@@ -182,10 +180,7 @@ const createExtensions = (
         }
         editor.commands.insertContent({
           type: "image",
-          attrs:{
-            src:srcUrl,
-            style: 'max-width: 20px; height: auto;'
-          }
+          attrs,
         });
       });
     },

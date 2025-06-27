@@ -153,8 +153,10 @@ export const i18next = i18nBase.use(initReactI18next).init({
         reset_login: "Reset login information",
         unauthorized_message:
           "Please login through the correct channel, or try refreshing the page",
-
-        create_new_ticket: "Create new ticket",
+        field_required:"Title cannot be blank.",
+        create_new_ticket: "Create Ticket",
+        prompt:"Prompt",
+        are_you_sure_submit_ticket:"Are you sure you want to submit this ticket?",
         select: "Select",
         details: "Details",
         plz_pvd_info: "Please provide details about the issue you’re experiencing or your specific request so we can assist you quickly and effectively.",
